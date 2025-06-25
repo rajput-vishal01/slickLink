@@ -29,7 +29,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("Invalid credentials");
         }
 
-        const isValid = await bcrypt.compare(credentials.password, user.password);
+        const isValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        );
 
         if (!isValid) {
           throw new Error("Invalid credentials");
@@ -69,4 +72,5 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
       return token;
     },
   },
+  pages: { signIn: "/auth/signin" },
 });
