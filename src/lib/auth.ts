@@ -38,38 +38,70 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
           throw new Error("Invalid credentials");
         }
 
-        return { id: user.id, email: user.email };
+        return { id: user.id, email: user.email, name: user.name };
       },
     }),
   ],
 
   callbacks: {
     async signIn({ user, account }) {
-      if (account.provider === "github") {
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email! },
-        });
-
-        if (!existingUser) {
-          await prisma.user.create({
-            data: {
-              email: user.email!,
-              name: user.name ?? "",
-              password: null, // No password for GitHub users
-            },
+      if (account?.provider === "github") {
+        try {
+          const existingUser = await prisma.user.findUnique({
+            where: { email: user.email! },
           });
+
+          if (!existingUser) {
+            const newUser = await prisma.user.create({
+              data: {
+                email: user.email!,
+                name: user.name ?? "",
+                password: null,
+              },
+            });
+            // Update the user object with the database ID
+            user.id = newUser.id;
+          } else {
+            // Update the user object with the existing database ID
+            user.id = existingUser.id;
+          }
+        } catch (error) {
+          console.error("Error in signIn callback:", error);
+          return false;
         }
       }
 
       return true;
     },
 
-    async session({ session, user }) {
-      return session;
+    async jwt({ token, user }) {
+      // On sign-in, add user.id to the token
+      if (user) {
+        token.id = user.id;
+      }
+      
+      // If token.id is not set, fetch it from the database using the email
+      if (!token.id && token.email) {
+        try {
+          const dbUser = await prisma.user.findUnique({ 
+            where: { email: token.email } 
+          });
+          if (dbUser) {
+            token.id = dbUser.id;
+          }
+        } catch (error) {
+          console.error("Error fetching user in JWT callback:", error);
+        }
+      }
+      
+      return token;
     },
 
-    async jwt({ token, user }) {
-      return token;
+    async session({ session, token }) {
+      if (session.user && token.id) {
+        session.user.id = token.id as string; 
+      }
+      return session;
     },
   },
   pages: { signIn: "/auth/signin" },
