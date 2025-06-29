@@ -28,7 +28,7 @@ export default function RootLayout({
   return (
     <html lang="en">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased p-20 overflow-hidden relative`}>
+        className={`${geistSans.variable} ${geistMono.variable} antialiased p-20  relative`}>
         <AnimatedBackground />
         <div className="relative z-10">
           <SessionProviderWrapper>
