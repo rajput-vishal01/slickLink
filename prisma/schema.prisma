@@ -8,10 +8,10 @@ datasource db {
 }
 
 model User {
-  id        Int      @id @default(autoincrement())
+  id        String   @id @default(uuid()) // Changed from Int to String UUID
   email     String   @unique
   name      String?
-  password  String? // Optional for OAuth users
+  password  String?  // Optional for OAuth users
   urls      Url[]
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -21,7 +21,7 @@ model Url {
   id          String   @id @default(cuid())
   originalUrl String
   shortCode   String   @unique
-  userId      Int?
+  userId      String?  // Changed from Int? to String?
   user        User?    @relation(fields: [userId], references: [id])
   clicks      Int      @default(0)
   createdAt   DateTime @default(now())
