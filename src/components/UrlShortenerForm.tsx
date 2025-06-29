@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Copy, ExternalLink, Check } from "lucide-react"
+import { Copy, ExternalLink, Check, QrCode } from "lucide-react"
 
 interface ShortenResponse {
   shortUrl: string
@@ -31,12 +31,15 @@ export default function UrlShortenerForm(): JSX.Element {
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string>("")
   const [copied, setCopied] = useState<boolean>(false)
+  const [qrCode, setQrCode] = useState<string | null>(null)
+  const [qrLoading, setQrLoading] = useState<boolean>(false)
 
   const sendUrl = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
     e.preventDefault()
     setLoading(true)
     setError("")
     setResult(null)
+    setQrCode(null) // Reset QR code when creating new URL
 
     try {
       const requestBody: RequestBody = { originalUrl: url }
@@ -71,6 +74,24 @@ export default function UrlShortenerForm(): JSX.Element {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const generateQrCode = async (shortCode: string): Promise<void> => {
+    setQrLoading(true)
+    try {
+      const fullUrl = getFullRedirectUrl(shortCode)
+      const res = await fetch(`/api/qr?url=${encodeURIComponent(fullUrl)}`)
+      
+      if (!res.ok) throw new Error('Failed to generate QR code')
+      
+      const blob = await res.blob() //api returns a png img(Binary data/Binary Large Object (blob))
+      const qrDataUrl = URL.createObjectURL(blob) //creates a temporary URL like blob:http://localhost:3000/abc123
+      setQrCode(qrDataUrl)
+    } catch (err) {
+      setError('Failed to generate QR code')
+    } finally {
+      setQrLoading(false)
     }
   }
 
@@ -165,7 +186,30 @@ export default function UrlShortenerForm(): JSX.Element {
               <ExternalLink className="h-3 w-3" />
               <span>Redirect</span>
             </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => generateQrCode(getShortCode(result.shortUrl))}
+              disabled={qrLoading}
+              className="flex items-center space-x-1"
+            >
+              <QrCode className="h-3 w-3" />
+              <span>{qrLoading ? "Generating..." : "Generate QR"}</span>
+            </Button>
           </div>
+          
+          {qrCode && (
+            <div className="bg-white p-3 rounded border">
+              <p className="text-xs text-gray-600 mb-2">QR Code:</p>
+              <div className="flex justify-center">
+                <img 
+                  src={qrCode} 
+                  alt="QR Code" 
+                  className="w-32 h-32 border border-gray-200 rounded"
+                />
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
