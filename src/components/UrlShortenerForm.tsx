@@ -17,7 +17,7 @@ interface RequestBody {
   expiresAt?: string
 }
 
-type ExpirationOption = '1h' | '6h' | '12h' | '1d'
+type ExpirationOption = '6h' | '1d' | '4d' | '7d'
 
 interface TimeMap {
   [key: string]: number
@@ -26,7 +26,7 @@ interface TimeMap {
 export default function UrlShortenerForm(): JSX.Element {
   const [url, setUrl] = useState<string>("")
   const [customCode, setCustomCode] = useState<string>("")
-  const [expiresAt, setExpiresAt] = useState<ExpirationOption>("1d")
+  const [expiresAt, setExpiresAt] = useState<ExpirationOption>("7d")
   const [result, setResult] = useState<ShortenResponse | null>(null)
   const [loading, setLoading] = useState<boolean>(false)
   const [error, setError] = useState<string>("")
@@ -48,10 +48,10 @@ export default function UrlShortenerForm(): JSX.Element {
 
       if (expiresAt) {
         const timeMap: TimeMap = {
-          '1h': 60 * 60 * 1000,
           '6h': 6 * 60 * 60 * 1000,
-          '12h': 12 * 60 * 60 * 1000,
-          '1d': 24 * 60 * 60 * 1000
+          '1d': 24 * 60 * 60 * 1000,
+          '4d': 4 * 24 * 60 * 60 * 1000,
+          '7d': 7 * 24 * 60 * 60 * 1000
         }
         requestBody.expiresAt = new Date(Date.now() + timeMap[expiresAt]).toISOString()
       }
@@ -69,7 +69,7 @@ export default function UrlShortenerForm(): JSX.Element {
       setResult(response)
       setUrl("")
       setCustomCode("")
-      setExpiresAt("1d")
+      setExpiresAt("7d")
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An unexpected error occurred')
     } finally {
@@ -115,6 +115,22 @@ export default function UrlShortenerForm(): JSX.Element {
     if (shortCode) window.open(`/api/${shortCode}`, "_blank")
   }
 
+  const formatExpirationTime = (expiresAt: string): string => {
+    const expiration = new Date(expiresAt)
+    const now = new Date()
+    const diffMs = expiration.getTime() - now.getTime()
+    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
+    const diffDays = Math.floor(diffHours / 24)
+    
+    if (diffDays > 0) {
+      return `${diffDays} day${diffDays > 1 ? 's' : ''}`
+    } else if (diffHours > 0) {
+      return `${diffHours} hour${diffHours > 1 ? 's' : ''}`
+    } else {
+      return 'Less than 1 hour'
+    }
+  }
+
   return (
     <div className="space-y-4">
       <form onSubmit={sendUrl} className="space-y-4">
@@ -131,17 +147,22 @@ export default function UrlShortenerForm(): JSX.Element {
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomCode(e.target.value)}
           disabled={loading}
         />
-        <select
-          value={expiresAt}
-          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setExpiresAt(e.target.value as ExpirationOption)}
-          disabled={loading}
-          className="flex h-10 w-full rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-        >
-          <option value="1h">1 Hour</option>
-          <option value="6h">6 Hours</option>
-          <option value="12h">12 Hours</option>
-          <option value="1d">1 Day</option>
-        </select>
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-gray-300">
+            Expiration Time (Default: 7 days)
+          </label>
+          <select
+            value={expiresAt}
+            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setExpiresAt(e.target.value as ExpirationOption)}
+            disabled={loading}
+            className="flex h-10 w-full rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="6h">6 Hours</option>
+            <option value="1d">1 Day</option>
+            <option value="4d">4 Days</option>
+            <option value="7d">7 Days (Default)</option>
+          </select>
+        </div>
 
         <Button
           type="submit"
@@ -160,9 +181,14 @@ export default function UrlShortenerForm(): JSX.Element {
 
       {result && (
         <div className="mt-4 p-4 bg-green-100 border border-green-300 text-green-700 rounded-md space-y-3">
-          <h3 className="font-medium">✅ URL Shortened Successfully!</h3>
+          <h3 className="font-medium"> URL Shortened Successfully!</h3>
           <div className="bg-white p-3 rounded border">
-            <p className="text-xs text-gray-600 mb-1">Short URL:</p>
+            <div className="flex justify-between items-center mb-1">
+              <p className="text-xs text-gray-600">Short URL:</p>
+              <p className="text-xs text-gray-500">
+                Expires in: {formatExpirationTime(result.expiresAt)}
+              </p>
+            </div>
             <div className="flex items-center space-x-2">
               <code className="flex-1 text-sm bg-gray-100 p-2 rounded break-all">
                 {getFullRedirectUrl(getShortCode(result.shortUrl))}
