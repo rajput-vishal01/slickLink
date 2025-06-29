@@ -59,7 +59,7 @@ export default function Navbar() {
               <div className="flex items-center space-x-2">
                 {/* Clickable User Avatar for Profile */}
                 <Link
-                  href="/profile"
+                  href="/dashboard"
                   className="hover:opacity-80 transition-opacity">
                   <Avatar className="h-8 w-8 cursor-pointer ring-1 ring-white/20 shadow-lg shadow-black/20">
                     <AvatarImage
