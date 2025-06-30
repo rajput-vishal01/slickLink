@@ -7,7 +7,7 @@ import { Link2, Zap, Shield, BarChart3 } from "lucide-react";
 export default async function Home() {
   const session = await auth();
 
-  //delete expired urls
+  //delete expired urls -> also act as a random command to keep db up
   deleteExpiredUrls();
 
   /* anonymous usage limit (3) */
