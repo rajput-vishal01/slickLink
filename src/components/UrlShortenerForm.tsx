@@ -47,7 +47,7 @@ export default function UrlShortenerForm(): React.JSX.Element {
   const getShortCode = (shortUrl: string) => shortUrl?.split("/").pop() || "";
 
   const getFullRedirectUrl = (shortCode: string) =>
-    `${window.location.origin}/api/${shortCode}`;
+    `${process.env.NEXT_PUBLIC_BASE_URL}/api/${shortCode}`;
 
   const formatExpirationTime = (expiresAt: string): string => {
     const diff = new Date(expiresAt).getTime() - new Date().getTime();

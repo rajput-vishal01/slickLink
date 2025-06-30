@@ -96,9 +96,7 @@ const Dashboard = () => {
       .slice(0, 2)
       .toUpperCase() || "U";
 
-  const fmtDate = (
-    d: string | Date
-  ) =>
+  const fmtDate = (d: string | Date) =>
     new Date(d).toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
@@ -111,7 +109,7 @@ const Dashboard = () => {
   const copyUrl = async (code: string) => {
     try {
       await navigator.clipboard.writeText(
-        `${window.location.origin}/api/${code}`
+        `${process.env.NEXT_PUBLIC_BASE_URL}/api/${code}`
       );
       setCopiedId(code);
       setTimeout(() => setCopiedId(null), 2000);
@@ -334,7 +332,7 @@ const Dashboard = () => {
                   <div className="flex flex-wrap items-center gap-3 mb-2">
                     <p className="text-sm font-medium text-blue-400 break-all">
                       {url.shortUrl ||
-                        `${window.location.origin}/api/${url.shortCode}`}
+                        `${process.env.NEXT_PUBLIC_BASE_URL}/api/${url.shortCode}`}
                     </p>
                     <span className="flex items-center gap-1.5 text-xs-gray">
                       <Eye className="h-4 w-4" />
@@ -402,7 +400,7 @@ const Dashboard = () => {
               <div className="rounded-xl-glass p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
                 <div className="break-all">
                   <p className="text-sm font-medium text-blue-400 mb-1">
-                    {`${window.location.origin}/api/${stats.mostClickedLink.shortCode}`}
+                    {`${process.env.NEXT_PUBLIC_BASE_URL}/api/${stats.mostClickedLink.shortCode}`}
                   </p>
                   <p className="text-sm text-gray-300">
                     {short(stats.mostClickedLink.originalUrl)}
