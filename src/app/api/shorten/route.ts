@@ -28,18 +28,12 @@ export async function POST(request: Request) {
       );
     }
 
-    // Increment the count and update cookie — via response header
-    const response = Response.json(
-      { message: "Link allowed" },
-      { status: 200 }
-    );
-    response.headers.append(
-      "Set-Cookie",
-      `anon-usage=${String(count + 1)}; Path=/; Max-Age=${
-        60 * 60 * 24 * 30
-      }; HttpOnly; SameSite=Lax`
-    );
-    return response;
+    // Increment the count and update cookie
+    cookieStore.set("anon-usage", String(count + 1), {
+      httpOnly: true,
+      maxAge: 60 * 60 * 24 * 30, // 30 days
+      sameSite: "lax",
+    });
   }
 
   // Validate custom short code if provided
@@ -60,6 +54,7 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate that the expiration date is within allowed options
     const now = new Date();
     const timeDiff = parsed.getTime() - now.getTime();
     const allowedDurations = [
@@ -69,6 +64,7 @@ export async function POST(request: Request) {
       7 * 24 * 60 * 60 * 1000, // 7 days
     ];
 
+    // Check if the provided duration matches one of the allowed options (with 1 minute tolerance)
     const isValidDuration = allowedDurations.some(
       (duration) => Math.abs(timeDiff - duration) < 60 * 1000
     );
@@ -85,6 +81,7 @@ export async function POST(request: Request) {
 
     expirationDate = parsed;
   } else {
+    // Default to 7 days from now
     expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   }
 
