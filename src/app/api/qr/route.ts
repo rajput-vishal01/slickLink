@@ -18,6 +18,7 @@ export async function GET(request:NextRequest) {
       }
     })
   } catch (error) {
+    console.error("Error in qr route :",error);
     return new Response('Failed to generate QR code', { status: 500 })
   }
 }

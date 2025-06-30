@@ -6,9 +6,13 @@ import { auth } from "./auth";
 export async function getUserBySession() {
   const session = await auth();
 
+  if (!session?.user?.email) {
+    throw new Error("No authenticated user found");
+  }
+
   const user = await prisma.user.findUnique({
     where: {
-      email: session?.user?.email,
+      email: session.user.email,
     },
     select: {
       id: true,
@@ -25,8 +29,7 @@ export async function getUserBySession() {
   return user;
 }
 
-// Enhanced status calculation to match dashboard logic
-function getUrlStatus(expiresAt) {
+function getUrlStatus(expiresAt: Date | null| undefined) {
   if (!expiresAt) return "active";
   
   const now = new Date();
@@ -48,8 +51,7 @@ function getUrlStatus(expiresAt) {
   }
 }
 
-// Enhanced time remaining calculation to match dashboard
-function getTimeRemaining(expiresAt) {
+function getTimeRemaining(expiresAt: Date | null| undefined) {
   if (!expiresAt) return null;
   
   const now = new Date();
@@ -76,7 +78,7 @@ function getTimeRemaining(expiresAt) {
 }
 
 // Get status counts for dashboard stats
-function getUrlStatusCounts(urls) {
+function getUrlStatusCounts(urls:Array<{ expiresAt: Date | null }>) {
   const counts = {
     active: 0,
     expiring: 0,
@@ -151,16 +153,15 @@ export async function getUserUrlStats() {
         timeRemaining,
         isExpired,
         daysUntilExpiry,
-        clicksToday: 0, // You can implement this based on your click tracking
         shortUrl: `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/${url.shortCode}`,
         daysSinceCreated: Math.floor((now.getTime() - url.createdAt.getTime()) / (1000 * 60 * 60 * 24))
       };
     });
 
-    // Get status counts for dashboard
+    
     const statusCounts = getUrlStatusCounts(userWithUrls.urls);
 
-    // Calculate enhanced statistics
+  
     const stats = {
       totalLinks: userWithUrls.urls.length,
       totalClicks: userWithUrls.urls.reduce((sum, url) => sum + url.clicks, 0),
@@ -177,7 +178,7 @@ export async function getUserUrlStats() {
       linksExpiringSoon: enhancedUrls.filter(url => 
         ['expiring-very-soon', 'expiring-soon', 'expiring-moderate'].includes(url.status)
       ),
-      statusCounts // Add this for easy access in dashboard
+      statusCounts 
     };
 
     return {
@@ -187,7 +188,7 @@ export async function getUserUrlStats() {
         email: userWithUrls.email,
         createdAt: userWithUrls.createdAt
       },
-      urls: enhancedUrls, // Return enhanced URLs with all status info
+      urls: enhancedUrls, 
       stats
     };
 
@@ -243,8 +244,8 @@ export async function getUserUrlsWithDetails() {
       
       return {
         ...url,
-        status, // Enhanced status matching dashboard logic
-        timeRemaining, // Formatted time remaining string
+        status,
+        timeRemaining,
         isExpired,
         daysUntilExpiry,
         clicksToday: 0,

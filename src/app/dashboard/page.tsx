@@ -16,10 +16,55 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getUserUrlStats } from "@/lib/actions";
 
+// --- Type Definitions ---
+type User = {
+  id: string;
+  name: string | null;
+  email: string;
+  createdAt: Date;
+};
+
+type Url = {
+  id: string;
+  shortUrl?: string;
+  shortCode: string;
+  originalUrl: string;
+  clicks?: number;
+  createdAt: Date;
+  expiresAt?: Date | null;
+  timeRemaining?: string | null;
+  status?: string;
+  isExpired?: boolean | null;
+  daysUntilExpiry?: number | null;
+  clicksToday?: number;
+  daysSinceCreated?: number;
+};
+
+type Stats = {
+  totalLinks?: number;
+  totalClicks?: number;
+  averageClicksPerLink?: number;
+  recentLinks?: Url[];
+  mostClickedLink?: Url | null;
+  statusCounts?: {
+    active: number;
+    expiring: number;
+    expired: number;
+  };
+};
+
+type DashboardData = {
+  user: User;
+  urls: Url[];
+  stats: Stats;
+};
+
 const Dashboard = () => {
   const { data: session, status } = useSession();
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [dashboardData, setDashboardData] = useState<any>(null);
+  const [dashboardData, setDashboardData] = useState<DashboardData | null>(
+    null
+  );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -30,8 +75,12 @@ const Dashboard = () => {
         setLoading(true);
         const data = await getUserUrlStats();
         setDashboardData(data);
-      } catch (err: any) {
-        setError(err.message || "Something went wrong.");
+      } catch (err: unknown) {
+        if (err instanceof Error) {
+          setError(err.message);
+        } else {
+          setError("Something went wrong.");
+        }
       } finally {
         setLoading(false);
       }
@@ -39,7 +88,7 @@ const Dashboard = () => {
     fetchData();
   }, [session]);
 
-  const initials = (name?: string) =>
+  const initials = (name?: string | null) =>
     name
       ?.split(" ")
       .map((n) => n[0])
@@ -47,7 +96,9 @@ const Dashboard = () => {
       .slice(0, 2)
       .toUpperCase() || "U";
 
-  const fmtDate = (d: string) =>
+  const fmtDate = (
+    d: string | Date
+  ) =>
     new Date(d).toLocaleDateString("en-IN", {
       day: "2-digit",
       month: "short",
@@ -65,11 +116,11 @@ const Dashboard = () => {
       setCopiedId(code);
       setTimeout(() => setCopiedId(null), 2000);
     } catch {
-      // don't throw error -> as its not that important
+      // no-op
     }
   };
 
-  const Status = ({ url }: { url: any }) => {
+  const Status = ({ url }: { url: Url }) => {
     const base =
       "text-xs backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg";
     switch (url.status) {
@@ -274,7 +325,7 @@ const Dashboard = () => {
               </div>
             )}
 
-            {urls.map((url: any) => (
+            {urls.map((url) => (
               <div
                 key={url.id}
                 className="p-6 sm:p-8 flex flex-col gap-4 sm:gap-0 sm:flex-row sm:items-start hover:bg-white/5 transition">

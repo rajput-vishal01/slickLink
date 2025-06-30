@@ -17,7 +17,7 @@ export async function POST(request: Request) {
 
   // Anonymous users: limit to 3 links using cookie
   if (!session) {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const usageCookie = cookieStore.get("anon-usage");
     const count = usageCookie ? parseInt(usageCookie.value) : 0;
 
@@ -28,12 +28,18 @@ export async function POST(request: Request) {
       );
     }
 
-    // Increment the count and update cookie
-    cookies().set("anon-usage", String(count + 1), {
-      httpOnly: true,
-      maxAge: 60 * 60 * 24 * 30, // 30 days
-      sameSite: "lax",
-    });
+    // Increment the count and update cookie — via response header
+    const response = Response.json(
+      { message: "Link allowed" },
+      { status: 200 }
+    );
+    response.headers.append(
+      "Set-Cookie",
+      `anon-usage=${String(count + 1)}; Path=/; Max-Age=${
+        60 * 60 * 24 * 30
+      }; HttpOnly; SameSite=Lax`
+    );
+    return response;
   }
 
   // Validate custom short code if provided
@@ -54,7 +60,6 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate that the expiration date is within allowed options
     const now = new Date();
     const timeDiff = parsed.getTime() - now.getTime();
     const allowedDurations = [
@@ -64,7 +69,6 @@ export async function POST(request: Request) {
       7 * 24 * 60 * 60 * 1000, // 7 days
     ];
 
-    // Check if the provided duration matches one of the allowed options (with 1 minute tolerance)
     const isValidDuration = allowedDurations.some(
       (duration) => Math.abs(timeDiff - duration) < 60 * 1000
     );
@@ -81,13 +85,12 @@ export async function POST(request: Request) {
 
     expirationDate = parsed;
   } else {
-    // Default to 7 days from now
     expirationDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
   }
 
   const shortCode = customCode || generateShortCode();
 
-  const url = await prisma.url.create({
+  await prisma.url.create({
     data: {
       originalUrl,
       shortCode,

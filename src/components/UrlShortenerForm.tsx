@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import Image from "next/image";
+import React, { useState } from "react";
 import {
   Copy,
   ExternalLink,
@@ -25,7 +26,7 @@ interface RequestBody {
 
 type ExpirationOption = "6h" | "1d" | "4d" | "7d";
 
-export default function UrlShortenerForm(): JSX.Element {
+export default function UrlShortenerForm(): React.JSX.Element {
   const [url, setUrl] = useState("");
   const [customCode, setCustomCode] = useState("");
   const [expiresAt, setExpiresAt] = useState<ExpirationOption>("7d");
@@ -43,8 +44,7 @@ export default function UrlShortenerForm(): JSX.Element {
     "7d": 7 * 24 * 60 * 60 * 1000,
   };
 
-  const getShortCode = (shortUrl: string) =>
-    shortUrl?.split("/").pop() || "";
+  const getShortCode = (shortUrl: string) => shortUrl?.split("/").pop() || "";
 
   const getFullRedirectUrl = (shortCode: string) =>
     `${window.location.origin}/api/${shortCode}`;
@@ -68,7 +68,10 @@ export default function UrlShortenerForm(): JSX.Element {
     try {
       const body: RequestBody = { originalUrl: url.trim() };
       if (customCode.trim()) body.customCode = customCode.trim();
-      if (expiresAt) body.expiresAt = new Date(Date.now() + timeMap[expiresAt]).toISOString();
+      if (expiresAt)
+        body.expiresAt = new Date(
+          Date.now() + timeMap[expiresAt]
+        ).toISOString();
 
       const res = await fetch("/api/shorten", {
         method: "POST",
@@ -77,14 +80,21 @@ export default function UrlShortenerForm(): JSX.Element {
       });
 
       const response: ShortenResponse = await res.json();
-      if (!res.ok) throw new Error((response as any).error || "Request failed");
+      if (!res.ok) {
+        const errorResponse = response as { error?: string };
+        throw new Error(errorResponse.error || "Request failed");
+      }
 
       setResult(response);
       setUrl("");
       setCustomCode("");
       setExpiresAt("7d");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "An unexpected error occurred");
+      if (err instanceof Error) {
+        setError(err.message);
+      } else {
+        setError("An unexpected error occurred");
+      }
     } finally {
       setLoading(false);
     }
@@ -110,7 +120,9 @@ export default function UrlShortenerForm(): JSX.Element {
       await navigator.clipboard.writeText(text);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {}
+    } catch {
+      // Silent fail for clipboard access
+    }
   };
 
   const redirect = (shortCode: string) => {
@@ -177,14 +189,31 @@ export default function UrlShortenerForm(): JSX.Element {
               disabled={loading}
               className="w-full h-12 px-4 appearance-none cursor-pointer rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-400/50 focus:bg-white/10 text-sm"
             >
-              <option value="6h" className="bg-gray-800">6 Hours</option>
-              <option value="1d" className="bg-gray-800">1 Day</option>
-              <option value="4d" className="bg-gray-800">4 Days</option>
-              <option value="7d" className="bg-gray-800">7 Days (Default)</option>
+              <option value="6h" className="bg-gray-800">
+                6 Hours
+              </option>
+              <option value="1d" className="bg-gray-800">
+                1 Day
+              </option>
+              <option value="4d" className="bg-gray-800">
+                4 Days
+              </option>
+              <option value="7d" className="bg-gray-800">
+                7 Days (Default)
+              </option>
             </select>
             <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
-              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              <svg
+                className="w-4 h-4 text-gray-400"
+                fill="none"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M19 9l-7 7-7-7"
+                />
               </svg>
             </div>
           </div>
@@ -245,7 +274,9 @@ export default function UrlShortenerForm(): JSX.Element {
               </code>
               <button
                 onClick={() =>
-                  copyToClipboard(getFullRedirectUrl(getShortCode(result.shortUrl)))
+                  copyToClipboard(
+                    getFullRedirectUrl(getShortCode(result.shortUrl))
+                  )
                 }
                 className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 transition"
               >
@@ -289,7 +320,13 @@ export default function UrlShortenerForm(): JSX.Element {
             <div className="space-y-3 text-center">
               <p className="text-xs text-gray-400">Scan this QR code</p>
               <div className="flex justify-center">
-                <img src={qrCode} alt="QR Code" className="w-32 h-32 rounded-xl border border-white/20" />
+                <Image
+                  src={qrCode}
+                  alt="QR Code"
+                  width={200}
+                  height={200}
+                  className="rounded-xl border border-white/20"
+                />
               </div>
             </div>
           )}

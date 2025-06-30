@@ -2,15 +2,15 @@ import { findByShortCode, incrementClicks } from "@/lib/shortener-utils";
 import { NextRequest, NextResponse } from "next/server";
 
 export async function GET(
-  request: NextRequest,
+  req: NextRequest,
   { params }: { params: { code: string } }
 ) {
   try {
-    const { code } = await params;
+    const code = params.code;
 
     if (!code || typeof code !== "string") {
       return NextResponse.json(
-        { error: "Invalid Short Code" },
+        { error: "Invalid short code" },
         { status: 400 }
       );
     }

@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { Search, Home, ArrowLeft } from "lucide-react";
 
-export default function NotFound(): JSX.Element {
+export default function NotFound(): React.JSX.Element {
   return (
     <div className="min-h-screen w-full flex-center p-4 sm:p-6 lg:p-8">
       <div className="w-full max-w-md mx-auto card-glass p-6 sm:p-8 lg:p-10 shadow-2xl shadow-black/25 relative overflow-hidden">
