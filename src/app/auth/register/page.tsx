@@ -5,9 +5,6 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-
 import {
   User,
   Mail,
@@ -32,20 +29,12 @@ export default function RegisterPage() {
     e.preventDefault();
     setError("");
 
-    if (!name || !email || !password || !confirmPassword) {
-      setError("All fields are required.");
-      return;
-    }
-
-    if (!email.includes("@") || password.length < 6) {
-      setError("Invalid email or password too short.");
-      return;
-    }
-
-    if (password !== confirmPassword) {
-      setError("Passwords do not match.");
-      return;
-    }
+    if (!name || !email || !password || !confirmPassword)
+      return setError("All fields are required.");
+    if (!email.includes("@") || password.length < 6)
+      return setError("Invalid email or password too short.");
+    if (password !== confirmPassword)
+      return setError("Passwords do not match.");
 
     setIsLoading(true);
     try {
@@ -56,11 +45,7 @@ export default function RegisterPage() {
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || "Registration failed.");
-        return;
-      }
+      if (!res.ok) return setError(data.error || "Registration failed.");
 
       const login = await signIn("credentials", {
         email,
@@ -68,13 +53,10 @@ export default function RegisterPage() {
         redirect: false,
       });
 
-      if (login?.error) {
+      if (login?.error)
         setError("Account created, but automatic login failed.");
-      } else {
-        router.push("/");
-      }
-    } catch (err) {
-      console.log("Error in Register Page", err);
+      else router.push("/");
+    } catch {
       setError("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
@@ -82,110 +64,159 @@ export default function RegisterPage() {
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center p-4">
-      <div className="w-full max-w-sm">
-        <div className="bg-black/80 backdrop-blur-xl rounded-xl border border-white/10 shadow-2xl shadow-black/50 p-8 animate-in fade-in-0 slide-in-from-bottom-4 duration-700">
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-white mb-2 animate-in fade-in-0 slide-in-from-top-2 duration-500">
+    <div className="min-h-screen w-full flex items-center justify-center px-2 py-4 sm:px-6 lg:px-8">
+      <div className="w-full max-w-md min-w-0 card-glass rounded-3xl p-6 sm:p-8 lg:p-10 shadow-xl sm:shadow-2xl relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none rounded-3xl" />
+
+        <div className="relative z-10">
+          {/* Header */}
+          <div className="text-center mb-6 sm:mb-8">
+            <h1 className="text-2xl sm:text-3xl font-bold mb-2 sm:mb-3 bg-gradient-to-r from-white via-gray-200 to-gray-400 bg-clip-text text-transparent">
               Create Account
             </h1>
-            <p className="text-gray-400 text-sm animate-in fade-in-0 slide-in-from-top-2 duration-500 delay-100">
-              Join VideoVault today
+            <p className="text-gray-400 flex items-center justify-center gap-2 text-sm sm:text-base">
+              Join Slick Link
             </p>
           </div>
 
-          <form onSubmit={handleRegister} className="space-y-4">
-            {error && (
-              <div className="flex items-center gap-2 p-3 bg-red-950/50 border border-red-500/20 rounded-lg animate-in fade-in-0 slide-in-from-top-2 duration-300">
-                <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />
-                <p className="text-red-400 text-sm">{error}</p>
+          {/* Error */}
+          {error && (
+            <div className="mb-5 rounded-xl-glass bg-red-500/10 border-red-500/20 p-3 sm:p-4 shadow-lg shadow-red-500/10">
+              <div className="flex items-start gap-3">
+                <div className="w-8 h-8 rounded-full bg-red-500/20 flex items-center justify-center">
+                  <AlertCircle className="w-4 h-4 text-red-400" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-medium text-red-400 text-sm">
+                    Registration Error
+                  </p>
+                  <p className="text-red-300/80 text-sm break-words">{error}</p>
+                </div>
               </div>
-            )}
+            </div>
+          )}
 
-            <div className="relative group">
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 transition-all duration-300 group-focus-within:text-white group-focus-within:scale-110" />
-              <Input
-                type="text"
-                placeholder="Full Name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="pl-10 bg-transparent border-white/20 text-white placeholder-gray-400 focus:border-white/60 focus:ring-0 focus:shadow-lg focus:shadow-white/10 transition-all duration-300 hover:border-white/30 hover:shadow-md hover:shadow-white/5"
-                required
-              />
+          {/* Form */}
+          <form onSubmit={handleRegister} className="space-y-4 sm:space-y-6">
+            {/* Name */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300 flex gap-2">
+                <User className="w-4 h-4 text-green-400" />
+                Full Name
+              </label>
+              <div className="relative group">
+                <input
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="input-glass pr-12 h-11 sm:h-12 group-hover:border-white/20"
+                  required
+                />
+                <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-green-500/20 to-emerald-500/20">
+                  <User className="w-3 h-3 text-green-400" />
+                </div>
+              </div>
             </div>
 
-            <div className="relative group">
-              <Mail className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 transition-all duration-300 group-focus-within:text-white group-focus-within:scale-110" />
-              <Input
-                type="email"
-                placeholder="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="pl-10 bg-transparent border-white/20 text-white placeholder-gray-400 focus:border-white/60 focus:ring-0 focus:shadow-lg focus:shadow-white/10 transition-all duration-300 hover:border-white/30 hover:shadow-md hover:shadow-white/5"
-                required
-              />
+            {/* Email */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300 flex gap-2">
+                <Mail className="w-4 h-4 text-blue-400" />
+                Email Address
+              </label>
+              <div className="relative group">
+                <input
+                  type="email"
+                  placeholder="Enter your email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className="input-glass pr-12 h-11 sm:h-12 group-hover:border-white/20"
+                  required
+                />
+                <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20">
+                  <Mail className="w-3 h-3 text-blue-400" />
+                </div>
+              </div>
             </div>
 
-            <div className="relative group">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 transition-all duration-300 group-focus-within:text-white group-focus-within:scale-110" />
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pl-10 pr-10 bg-transparent border-white/20 text-white placeholder-gray-400 focus:border-white/60 focus:ring-0 focus:shadow-lg focus:shadow-white/10 transition-all duration-300 hover:border-white/30 hover:shadow-md hover:shadow-white/5"
-                required
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white transition-all duration-300 hover:scale-110">
-                {showPassword ? (
-                  <EyeOff className="w-4 h-4" />
-                ) : (
-                  <Eye className="w-4 h-4" />
-                )}
-              </button>
+            {/* Password */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300 flex gap-2">
+                <Lock className="w-4 h-4 text-purple-400" />
+                Password
+              </label>
+              <div className="relative group">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="input-glass pr-12 h-11 sm:h-12 group-hover:border-white/20"
+                  required
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 hover:from-purple-500/30 hover:to-pink-500/30"
+                >
+                  {showPassword ? (
+                    <EyeOff className="w-3 h-3 text-purple-400" />
+                  ) : (
+                    <Eye className="w-3 h-3 text-purple-400" />
+                  )}
+                </button>
+              </div>
             </div>
 
-            <div className="relative group">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4 transition-all duration-300 group-focus-within:text-white group-focus-within:scale-110" />
-              <Input
-                type={showPassword ? "text" : "password"}
-                placeholder="Confirm password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                className="pl-10 bg-transparent border-white/20 text-white placeholder-gray-400 focus:border-white/60 focus:ring-0 focus:shadow-lg focus:shadow-white/10 transition-all duration-300 hover:border-white/30 hover:shadow-md hover:shadow-white/5"
-                required
-              />
+            {/* Confirm Password */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-300 flex gap-2">
+                <Lock className="w-4 h-4 text-pink-400" />
+                Confirm Password
+              </label>
+              <div className="relative group">
+                <input
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Confirm your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="input-glass pr-12 h-11 sm:h-12 group-hover:border-white/20"
+                  required
+                />
+                <div className="absolute right-3 sm:right-4 top-1/2 -translate-y-1/2 flex items-center justify-center w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-gradient-to-r from-pink-500/20 to-rose-500/20">
+                  <Lock className="w-3 h-3 text-pink-400" />
+                </div>
+              </div>
             </div>
 
-            <Button
+            {/* Submit */}
+            <button
               type="submit"
-              disabled={isLoading}
-              className="w-full bg-white text-black hover:bg-white/90 hover:shadow-lg hover:shadow-white/20 hover:scale-[1.02] disabled:bg-gray-800 disabled:text-gray-500 disabled:cursor-not-allowed disabled:hover:scale-100 font-medium transition-all duration-300 transform active:scale-[0.98]">
+              disabled={isLoading || !name || !email || !password || !confirmPassword}
+              className="btn-primary w-full h-11 sm:h-12 rounded-2xl disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base mt-6"
+            >
               {isLoading ? (
-                <span className="flex items-center gap-2">
-                  <div className="w-4 h-4 border-2 border-black/20 border-t-black rounded-full animate-spin"></div>
-                  Creating...
-                </span>
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Creating Account...
+                </>
               ) : (
-                "Create Account"
+                <>Create Account</>
               )}
-            </Button>
+            </button>
           </form>
 
-          <div className="mt-6 pt-6 border-t border-white/10">
-            <p className="text-gray-400 text-sm text-center mb-3">
+          {/* Sign In link */}
+          <div className="mt-6 sm:mt-8 pt-5 border-t border-white/10">
+            <p className="text-xs-gray text-center mb-3">
               Already have an account?
             </p>
             <Link href="/auth/signin">
-              <Button
-                variant="outline"
-                className="w-full bg-transparent border-white">
-                <LogIn className="w-4 h-4 mr-2" />
+              <button className="w-full h-11 sm:h-12 rounded-xl-glass hover:bg-white/10 hover:border-white/20 hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2 text-sm sm:text-base">
+                <LogIn className="w-4 h-4" />
                 Sign in instead
-              </Button>
+              </button>
             </Link>
           </div>
         </div>

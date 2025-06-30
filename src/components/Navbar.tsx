@@ -15,7 +15,6 @@ export default function Navbar() {
     const handleScroll = () => {
       setScrolled(window.scrollY > 50);
     };
-
     window.addEventListener("scroll", handleScroll);
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
@@ -40,12 +39,12 @@ export default function Navbar() {
       <nav
         className={`w-full max-w-6xl rounded-2xl transition-all duration-300 ${
           scrolled
-            ? "backdrop-blur-xl bg-white/10 border border-white/20 shadow-2xl shadow-black/25"
-            : "backdrop-blur-md bg-white/5 border border-white/10"
+            ? "rounded-xl-glass shadow-2xl shadow-black/25"
+            : "card-glass"
         } before:absolute before:inset-0 before:rounded-2xl before:bg-gradient-to-r before:from-white/5 before:to-transparent before:pointer-events-none`}>
         <div className="relative px-4 sm:px-6 py-3 flex items-center justify-between z-10">
           {/* Logo */}
-          <Link href="/" className="flex items-center group">
+          <Link href="/" className="flex-center group">
             <span className="text-lg font-semibold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent transition-opacity group-hover:opacity-80">
               slickLink
             </span>
@@ -53,28 +52,29 @@ export default function Navbar() {
 
           {/* Auth Section */}
           <div className="flex items-center space-x-2 sm:space-x-4">
-            {status === "loading" ? (
-              <div className="w-8 h-8 rounded-full bg-gray-800 animate-pulse" />
-            ) : session ? (
-              <div className="flex items-center space-x-2">
-                {/* Clickable User Avatar for Profile */}
+            {session ? (
+              <div className="flex items-center space-x-2 sm:space-x-3">
+                {/* Merged Dashboard Button with Avatar */}
                 <Link
                   href="/dashboard"
-                  className="hover:opacity-80 transition-opacity">
-                  <Avatar className="h-8 w-8 cursor-pointer ring-1 ring-white/20 shadow-lg shadow-black/20">
-                    <AvatarImage
-                      src={session.user?.image || ""}
-                      alt={session.user?.name || "User"}
-                    />
-                    <AvatarFallback className="text-xs text-gray-100 bg-white/10 backdrop-blur-sm border-white/20">
-                      {session.user?.name
-                        ? getUserInitials(session.user.name)
-                        : "U"}
-                    </AvatarFallback>
-                  </Avatar>
+                  className="h-8 px-3 sm:h-9 sm:px-4 flex items-center gap-2 text-sm font-medium text-white rounded-full backdrop-blur-sm bg-white/10 border border-white/20 hover:bg-white/20 transition-all duration-300">
+                  <span>Dashboard</span>
+                  <span className="hidden sm:flex">
+                    <Avatar className="h-6 w-6 ring-1 ring-white/20 shadow-md shadow-black/20">
+                      <AvatarImage
+                        src={session.user?.image || ""}
+                        alt={session.user?.name || "User"}
+                      />
+                      <AvatarFallback className="text-xs-gray bg-white/10 backdrop-blur-sm border-white/20">
+                        {session.user?.name
+                          ? getUserInitials(session.user.name)
+                          : "U"}
+                      </AvatarFallback>
+                    </Avatar>
+                  </span>
                 </Link>
 
-                {/* Sign Out Button */}
+                {/* Sign Out */}
                 <Button
                   variant="ghost"
                   size="sm"
@@ -87,7 +87,7 @@ export default function Navbar() {
             ) : (
               <Button
                 onClick={() => signIn()}
-                className="cursor-pointer rounded-full bg-white/90 backdrop-blur-sm text-black hover:bg-white border border-white/30 shadow-lg shadow-white/10 h-8 px-3 sm:h-9 sm:px-4">
+                className="h-8 px-3 sm:h-9 sm:px-4 flex items-center gap-1 rounded-full bg-white/90 backdrop-blur-sm text-black hover:bg-white border border-white/30 shadow-lg shadow-white/10">
                 <UserPlus className="w-4" />
                 <span>Sign up</span>
               </Button>

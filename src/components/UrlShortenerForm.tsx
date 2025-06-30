@@ -1,243 +1,300 @@
-"use client"
+"use client";
 
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Copy, ExternalLink, Check, QrCode } from "lucide-react"
+import { useState } from "react";
+import {
+  Copy,
+  ExternalLink,
+  Check,
+  QrCode,
+  Link2,
+  Clock,
+  Sparkles,
+} from "lucide-react";
 
 interface ShortenResponse {
-  shortUrl: string
-  originalUrl: string
-  expiresAt: string
+  shortUrl: string;
+  originalUrl: string;
+  expiresAt: string;
 }
 
 interface RequestBody {
-  originalUrl: string
-  customCode?: string
-  expiresAt?: string
+  originalUrl: string;
+  customCode?: string;
+  expiresAt?: string;
 }
 
-type ExpirationOption = '6h' | '1d' | '4d' | '7d'
-
-interface TimeMap {
-  [key: string]: number
-}
+type ExpirationOption = "6h" | "1d" | "4d" | "7d";
 
 export default function UrlShortenerForm(): JSX.Element {
-  const [url, setUrl] = useState<string>("")
-  const [customCode, setCustomCode] = useState<string>("")
-  const [expiresAt, setExpiresAt] = useState<ExpirationOption>("7d")
-  const [result, setResult] = useState<ShortenResponse | null>(null)
-  const [loading, setLoading] = useState<boolean>(false)
-  const [error, setError] = useState<string>("")
-  const [copied, setCopied] = useState<boolean>(false)
-  const [qrCode, setQrCode] = useState<string | null>(null)
-  const [qrLoading, setQrLoading] = useState<boolean>(false)
+  const [url, setUrl] = useState("");
+  const [customCode, setCustomCode] = useState("");
+  const [expiresAt, setExpiresAt] = useState<ExpirationOption>("7d");
+  const [result, setResult] = useState<ShortenResponse | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [copied, setCopied] = useState(false);
+  const [qrCode, setQrCode] = useState<string | null>(null);
+  const [qrLoading, setQrLoading] = useState(false);
 
-  const sendUrl = async (e: React.FormEvent<HTMLFormElement>): Promise<void> => {
-    e.preventDefault()
-    setLoading(true)
-    setError("")
-    setResult(null)
-    setQrCode(null) // Reset QR code when creating new URL
+  const timeMap = {
+    "6h": 6 * 60 * 60 * 1000,
+    "1d": 24 * 60 * 60 * 1000,
+    "4d": 4 * 24 * 60 * 60 * 1000,
+    "7d": 7 * 24 * 60 * 60 * 1000,
+  };
+
+  const getShortCode = (shortUrl: string) =>
+    shortUrl?.split("/").pop() || "";
+
+  const getFullRedirectUrl = (shortCode: string) =>
+    `${window.location.origin}/api/${shortCode}`;
+
+  const formatExpirationTime = (expiresAt: string): string => {
+    const diff = new Date(expiresAt).getTime() - new Date().getTime();
+    const hrs = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hrs / 24);
+    if (days > 0) return `${days} day${days > 1 ? "s" : ""}`;
+    if (hrs > 0) return `${hrs} hour${hrs > 1 ? "s" : ""}`;
+    return "Less than 1 hour";
+  };
+
+  const sendUrl = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    setResult(null);
+    setQrCode(null);
 
     try {
-      const requestBody: RequestBody = { originalUrl: url }
-
-      if (customCode.trim()) requestBody.customCode = customCode.trim()
-
-      if (expiresAt) {
-        const timeMap: TimeMap = {
-          '6h': 6 * 60 * 60 * 1000,
-          '1d': 24 * 60 * 60 * 1000,
-          '4d': 4 * 24 * 60 * 60 * 1000,
-          '7d': 7 * 24 * 60 * 60 * 1000
-        }
-        requestBody.expiresAt = new Date(Date.now() + timeMap[expiresAt]).toISOString()
-      }
+      const body: RequestBody = { originalUrl: url.trim() };
+      if (customCode.trim()) body.customCode = customCode.trim();
+      if (expiresAt) body.expiresAt = new Date(Date.now() + timeMap[expiresAt]).toISOString();
 
       const res = await fetch("/api/shorten", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody)
-      })
+        body: JSON.stringify(body),
+      });
 
-      const response: ShortenResponse = await res.json()
+      const response: ShortenResponse = await res.json();
+      if (!res.ok) throw new Error((response as any).error || "Request failed");
 
-      if (!res.ok) throw new Error((response as any).error || `Request failed (${res.status})`)
-
-      setResult(response)
-      setUrl("")
-      setCustomCode("")
-      setExpiresAt("7d")
+      setResult(response);
+      setUrl("");
+      setCustomCode("");
+      setExpiresAt("7d");
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'An unexpected error occurred')
+      setError(err instanceof Error ? err.message : "An unexpected error occurred");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
-  const generateQrCode = async (shortCode: string): Promise<void> => {
-    setQrLoading(true)
+  const generateQrCode = async (shortCode: string) => {
+    setQrLoading(true);
     try {
-      const fullUrl = getFullRedirectUrl(shortCode)
-      const res = await fetch(`/api/qr?url=${encodeURIComponent(fullUrl)}`)
-      
-      if (!res.ok) throw new Error('Failed to generate QR code')
-      
-      const blob = await res.blob() //api returns a png img(Binary data/Binary Large Object (blob))
-      const qrDataUrl = URL.createObjectURL(blob) //creates a temporary URL like blob:http://localhost:3000/abc123
-      setQrCode(qrDataUrl)
-    } catch (err) {
-      setError('Failed to generate QR code')
-    } finally {
-      setQrLoading(false)
-    }
-  }
-
-  const copyToClipboard = async (text: string): Promise<void> => {
-    try {
-      await navigator.clipboard.writeText(text)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
+      const url = getFullRedirectUrl(shortCode);
+      const res = await fetch(`/api/qr?url=${encodeURIComponent(url)}`);
+      if (!res.ok) throw new Error();
+      const blob = await res.blob();
+      setQrCode(URL.createObjectURL(blob));
     } catch {
-      // Silently fail
+      setError("Failed to generate QR code");
+    } finally {
+      setQrLoading(false);
     }
-  }
+  };
 
-  const getShortCode = (shortUrl: string): string => shortUrl?.split("/").pop() || ""
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {}
+  };
 
-  const getFullRedirectUrl = (shortCode: string): string => {
-    return `${window.location.origin}/api/${shortCode}`
-  }
-
-  const redirect = (shortCode: string): void => {
-    if (shortCode) window.open(`/api/${shortCode}`, "_blank")
-  }
-
-  const formatExpirationTime = (expiresAt: string): string => {
-    const expiration = new Date(expiresAt)
-    const now = new Date()
-    const diffMs = expiration.getTime() - now.getTime()
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    const diffDays = Math.floor(diffHours / 24)
-    
-    if (diffDays > 0) {
-      return `${diffDays} day${diffDays > 1 ? 's' : ''}`
-    } else if (diffHours > 0) {
-      return `${diffHours} hour${diffHours > 1 ? 's' : ''}`
-    } else {
-      return 'Less than 1 hour'
-    }
-  }
+  const redirect = (shortCode: string) => {
+    if (shortCode) window.open(`/api/${shortCode}`, "_blank");
+  };
 
   return (
-    <div className="space-y-4">
-      <form onSubmit={sendUrl} className="space-y-4">
-        <Input
-          type="url"
-          placeholder="Enter the URL (required)"
-          value={url}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setUrl(e.target.value)}
-          disabled={loading}
-        />
-        <Input
-          placeholder="Custom short code (optional)"
-          value={customCode}
-          onChange={(e: React.ChangeEvent<HTMLInputElement>) => setCustomCode(e.target.value)}
-          disabled={loading}
-        />
+    <div className="space-y-6">
+      {/* Form */}
+      <form onSubmit={sendUrl} className="space-y-6">
+        {/* URL input */}
         <div className="space-y-2">
-          <label className="text-sm font-medium text-gray-300">
-            Expiration Time (Default: 7 days)
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <Link2 className="w-4 h-4 text-blue-400" />
+            Original URL
           </label>
-          <select
-            value={expiresAt}
-            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setExpiresAt(e.target.value as ExpirationOption)}
-            disabled={loading}
-            className="flex h-10 w-full rounded-md border border-gray-600 bg-gray-800 text-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="6h">6 Hours</option>
-            <option value="1d">1 Day</option>
-            <option value="4d">4 Days</option>
-            <option value="7d">7 Days (Default)</option>
-          </select>
+          <div className="relative">
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://example.com/long-url"
+              disabled={loading}
+              required
+              className="w-full h-12 px-4 pr-12 rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400/50 focus:bg-white/10 text-sm"
+            />
+            <div className="absolute right-4 top-1/2 -translate-y-1/2">
+              <div className="w-6 h-6 flex items-center justify-center rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20">
+                <Link2 className="w-3 h-3 text-blue-400" />
+              </div>
+            </div>
+          </div>
         </div>
 
-        <Button
+        {/* Custom code */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <Sparkles className="w-4 h-4 text-purple-400" />
+            Custom Short Code
+            <span className="text-xs text-gray-500 bg-white/5 px-2 py-0.5 rounded-full ml-1">
+              Optional
+            </span>
+          </label>
+          <input
+            type="text"
+            value={customCode}
+            onChange={(e) => setCustomCode(e.target.value)}
+            placeholder="my-custom-code"
+            disabled={loading}
+            className="w-full h-12 px-4 rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400/50 focus:bg-white/10 text-sm"
+          />
+        </div>
+
+        {/* Expiration select */}
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-sm text-gray-300">
+            <Clock className="w-4 h-4 text-green-400" />
+            Expiration Time
+          </label>
+          <div className="relative">
+            <select
+              value={expiresAt}
+              onChange={(e) => setExpiresAt(e.target.value as ExpirationOption)}
+              disabled={loading}
+              className="w-full h-12 px-4 appearance-none cursor-pointer rounded-2xl backdrop-blur-md bg-white/5 border border-white/10 text-white focus:outline-none focus:border-green-400/50 focus:bg-white/10 text-sm"
+            >
+              <option value="6h" className="bg-gray-800">6 Hours</option>
+              <option value="1d" className="bg-gray-800">1 Day</option>
+              <option value="4d" className="bg-gray-800">4 Days</option>
+              <option value="7d" className="bg-gray-800">7 Days (Default)</option>
+            </select>
+            <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none">
+              <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        {/* Submit button */}
+        <button
           type="submit"
           disabled={loading || !url.trim()}
-          className="w-full"
+          className="w-full h-12 rounded-2xl bg-gradient-to-r from-blue-500 to-purple-500 text-white font-medium hover:from-blue-600 hover:to-purple-600 disabled:from-gray-600 disabled:to-gray-600 disabled:cursor-not-allowed transition-all duration-300 shadow-lg hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
         >
-          {loading ? "Shortening..." : "Shorten URL"}
-        </Button>
+          {loading ? (
+            <>
+              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              <span>Shortening...</span>
+            </>
+          ) : (
+            <>
+              <Sparkles className="w-4 h-4" />
+              <span>Shorten URL</span>
+            </>
+          )}
+        </button>
       </form>
 
+      {/* Error */}
       {error && (
-        <div className="mt-4 p-3 bg-red-100 border border-red-300 text-red-700 rounded-md text-sm">
+        <div className="backdrop-blur-xl bg-red-500/10 border border-red-500/20 rounded-2xl p-4 text-sm text-red-300">
+          <p className="font-medium text-red-400 mb-1">Error</p>
           {error}
         </div>
       )}
 
+      {/* Result */}
       {result && (
-        <div className="mt-4 p-4 bg-green-100 border border-green-300 text-green-700 rounded-md space-y-3">
-          <h3 className="font-medium"> URL Shortened Successfully!</h3>
-          <div className="bg-white p-3 rounded border">
-            <div className="flex justify-between items-center mb-1">
-              <p className="text-xs text-gray-600">Short URL:</p>
-              <p className="text-xs text-gray-500">
-                Expires in: {formatExpirationTime(result.expiresAt)}
-              </p>
+        <div className="space-y-6 bg-gradient-to-br from-green-500/10 to-emerald-500/10 border border-green-500/20 rounded-2xl p-6 shadow-green-500/10 shadow-2xl backdrop-blur-xl">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 flex items-center justify-center bg-green-500/20 rounded-full">
+              <Check className="w-5 h-5 text-green-400" />
             </div>
-            <div className="flex items-center space-x-2">
-              <code className="flex-1 text-sm bg-gray-100 p-2 rounded break-all">
+            <div>
+              <p className="font-semibold text-green-400">URL Shortened!</p>
+              <p className="text-green-300/70 text-sm">Ready to share</p>
+            </div>
+          </div>
+
+          <div className="space-y-2 bg-white/5 border border-white/10 rounded-xl p-4">
+            <div className="flex justify-between text-xs text-gray-400 mb-1">
+              <span>Short URL</span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {formatExpirationTime(result.expiresAt)}
+              </span>
+            </div>
+            <div className="flex items-center gap-3">
+              <code className="flex-1 text-sm text-white font-mono break-all">
                 {getFullRedirectUrl(getShortCode(result.shortUrl))}
               </code>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => copyToClipboard(getFullRedirectUrl(getShortCode(result.shortUrl)))}
-                className="h-8 px-2"
+              <button
+                onClick={() =>
+                  copyToClipboard(getFullRedirectUrl(getShortCode(result.shortUrl)))
+                }
+                className="w-10 h-10 flex items-center justify-center rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 transition"
               >
-                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-              </Button>
+                {copied ? (
+                  <Check className="w-4 h-4 text-green-400" />
+                ) : (
+                  <Copy className="w-4 h-4 text-gray-300" />
+                )}
+              </button>
             </div>
           </div>
-          <div className="flex space-x-2">
-            <Button
-              size="sm"
+
+          <div className="flex flex-col sm:flex-row gap-3">
+            <button
               onClick={() => redirect(getShortCode(result.shortUrl))}
-              className="flex items-center space-x-1"
+              className="flex-1 h-10 rounded-xl border border-blue-500/30 bg-gradient-to-r from-blue-500/20 to-purple-500/20 hover:from-blue-500/30 hover:to-purple-500/30 transition text-white flex items-center justify-center gap-2"
             >
-              <ExternalLink className="h-3 w-3" />
-              <span>Redirect</span>
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
+              <ExternalLink className="w-4 h-4" />
+              Test Link
+            </button>
+            <button
               onClick={() => generateQrCode(getShortCode(result.shortUrl))}
               disabled={qrLoading}
-              className="flex items-center space-x-1"
+              className="flex-1 h-10 rounded-xl border border-white/20 bg-white/10 hover:bg-white/20 transition text-white flex items-center justify-center gap-2"
             >
-              <QrCode className="h-3 w-3" />
-              <span>{qrLoading ? "Generating..." : "Generate QR"}</span>
-            </Button>
+              {qrLoading ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <span>Generating...</span>
+                </>
+              ) : (
+                <>
+                  <QrCode className="w-4 h-4" />
+                  <span>Generate QR</span>
+                </>
+              )}
+            </button>
           </div>
-          
+
           {qrCode && (
-            <div className="bg-white p-3 rounded border">
-              <p className="text-xs text-gray-600 mb-2">QR Code:</p>
+            <div className="space-y-3 text-center">
+              <p className="text-xs text-gray-400">Scan this QR code</p>
               <div className="flex justify-center">
-                <img 
-                  src={qrCode} 
-                  alt="QR Code" 
-                  className="w-32 h-32 border border-gray-200 rounded"
-                />
+                <img src={qrCode} alt="QR Code" className="w-32 h-32 rounded-xl border border-white/20" />
               </div>
             </div>
           )}
         </div>
       )}
     </div>
-  )
+  );
 }

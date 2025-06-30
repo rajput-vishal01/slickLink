@@ -1,7 +1,7 @@
 "use client";
-import { useSession } from "next-auth/react";
+
 import React, { useState, useEffect } from "react";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useSession } from "next-auth/react";
 import {
   Link as LinkIcon,
   Copy,
@@ -13,390 +13,402 @@ import {
   ExternalLink,
   Timer,
 } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { getUserUrlStats } from "@/lib/actions";
 
 const Dashboard = () => {
   const { data: session, status } = useSession();
-  const [copiedId, setCopiedId] = useState(null);
-
-  // Simplified state - using server functions efficiently
-  const [dashboardData, setDashboardData] = useState(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [dashboardData, setDashboardData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
 
-  // Single data fetch - server provides everything we need
   useEffect(() => {
     const fetchData = async () => {
-      if (session?.user?.email) {
-        try {
-          setLoading(true);
-          // getUserUrlStats now returns everything including enhanced URLs
-          const data = await getUserUrlStats();
-          setDashboardData(data);
-          setError(null);
-        } catch (err) {
-          console.error("Error fetching data:", err);
-          setError(err.message);
-        } finally {
-          setLoading(false);
-        }
+      if (!session?.user?.email) return;
+      try {
+        setLoading(true);
+        const data = await getUserUrlStats();
+        setDashboardData(data);
+      } catch (err: any) {
+        setError(err.message || "Something went wrong.");
+      } finally {
+        setLoading(false);
       }
     };
-
     fetchData();
   }, [session]);
 
-  const getUserInitials = (name) => {
-    if (!name) return "U";
-    return name
-      .split(" ")
+  const initials = (name?: string) =>
+    name
+      ?.split(" ")
       .map((n) => n[0])
       .join("")
-      .toUpperCase()
-      .slice(0, 2);
+      .slice(0, 2)
+      .toUpperCase() || "U";
+
+  const fmtDate = (d: string) =>
+    new Date(d).toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+
+  const short = (url: string) =>
+    url.length > 50 ? url.slice(0, 50) + "…" : url;
+
+  const copyUrl = async (code: string) => {
+    try {
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/api/${code}`
+      );
+      setCopiedId(code);
+      setTimeout(() => setCopiedId(null), 2000);
+    } catch {
+      // don't throw error -> as its not that important
+    }
   };
 
-  const formatDate = (date) => {
-    return new Date(date).toLocaleDateString();
-  };
-
-  const formatUrl = (url) => {
-    return url.length > 50 ? url.substring(0, 50) + "..." : url;
-  };
-
-  // Using server-provided status badges
-  const getStatusBadge = (url) => {
+  const Status = ({ url }: { url: any }) => {
+    const base =
+      "text-xs backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg";
     switch (url.status) {
       case "expired":
         return (
-          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full flex items-center space-x-1">
+          <span
+            className={`${base} bg-red-500/20 text-red-300 border border-red-500/30`}>
             <AlertCircle className="h-3 w-3" />
-            <span>Expired</span>
+            Expired
           </span>
         );
       case "expiring-very-soon":
         return (
-          <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full flex items-center space-x-1 animate-pulse">
+          <span
+            className={`${base} animate-pulse bg-red-500/20 text-red-300 border border-red-500/30`}>
             <Timer className="h-3 w-3" />
-            <span>Expires Soon</span>
+            Expires Soon
           </span>
         );
       case "expiring-soon":
         return (
-          <span className="text-xs bg-orange-100 text-orange-800 px-2 py-1 rounded-full flex items-center space-x-1">
+          <span
+            className={`${base} bg-orange-500/20 text-orange-300 border border-orange-500/30`}>
             <Clock className="h-3 w-3" />
-            <span>Expiring Today</span>
+            Expiring Today
           </span>
         );
       case "expiring-moderate":
         return (
-          <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded-full flex items-center space-x-1">
+          <span
+            className={`${base} bg-yellow-500/20 text-yellow-300 border border-yellow-500/30`}>
             <Clock className="h-3 w-3" />
-            <span>Expires Soon</span>
+            Expires Soon
           </span>
         );
       default:
         return (
-          <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded-full">
+          <span
+            className={`${base} bg-green-500/20 text-green-300 border border-green-500/30`}>
             Active
           </span>
         );
     }
   };
 
-  const handleCopyShortUrl = async (shortCode) => {
-    const shortUrl = `${window.location.origin}/api/${shortCode}`;
-    try {
-      await navigator.clipboard.writeText(shortUrl);
-      setCopiedId(shortCode);
-      setTimeout(() => setCopiedId(null), 2000);
-    } catch (err) {
-      console.error("Failed to copy:", err);
-    }
-  };
-
-  if (status === "loading" || loading) {
+  if (status === "loading" || loading)
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
+      <div className="min-h-screen flex-center">
+        <div className="card-glass rounded-3xl p-8 flex-center flex-col gap-4">
+          <div className="h-16 w-16 border-2 border-blue-400/30 border-t-blue-400 rounded-full animate-spin" />
+          <p className="text-white/80">Loading dashboard…</p>
+        </div>
       </div>
     );
-  }
 
-  if (!session) {
+  if (!session)
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">
+      <div className="min-h-screen flex-center px-4">
+        <div className="card-glass rounded-3xl p-12 text-center max-w-md">
+          <h2 className="text-2xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent mb-4">
             Please sign in
           </h2>
-          <p className="text-gray-600">
-            You need to be signed in to view your dashboard.
+          <p className="text-gray-400">
+            You must be signed in to view your dashboard.
           </p>
         </div>
       </div>
     );
-  }
 
-  if (error) {
+  if (error)
     return (
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="bg-red-50 border border-red-200 rounded-lg p-6">
-          <div className="flex items-center">
-            <AlertCircle className="h-5 w-5 text-red-400 mr-2" />
-            <h3 className="text-red-800 font-medium">
+        <div className="rounded-3xl backdrop-blur-xl bg-red-500/10 border border-red-500/20 p-8 shadow-2xl shadow-red-500/10">
+          <div className="flex items-center gap-3 mb-3">
+            <AlertCircle className="h-6 w-6 text-red-400" />
+            <h3 className="text-red-300 font-medium text-lg">
               Error loading dashboard
             </h3>
           </div>
-          <p className="text-red-700 mt-2">{error}</p>
+          <p className="text-red-400/80">{error}</p>
         </div>
       </div>
     );
-  }
 
-  // Extract data from server response
-  const userData = dashboardData?.user;
-  const urlsData = dashboardData?.urls || [];
-  const statsData = dashboardData?.stats;
-  const statusCounts = statsData?.statusCounts || { active: 0, expiring: 0, expired: 0 };
+  const { user, urls = [], stats } = dashboardData || {};
+  const { statusCounts = { active: 0, expiring: 0, expired: 0 } } = stats || {};
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-      {/* Profile Header */}
-      <div className="bg-white rounded-lg shadow-sm p-6 mb-8">
-        <div className="flex items-center space-x-4">
-          <Avatar className="h-16 w-16 cursor-pointer ring-2 ring-blue-200 shadow-lg">
-            <AvatarImage
-              src={session.user?.image || ""}
-              alt={session.user?.name || "User"}
-            />
-            <AvatarFallback className="text-lg text-gray-700 bg-gradient-to-br from-blue-100 to-purple-100">
-              {session.user?.name ? getUserInitials(session.user.name) : "U"}
-            </AvatarFallback>
-          </Avatar>
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900">
-              {userData?.name || session.user?.name || "User"}
-            </h2>
-            <p className="text-gray-600">
-              {userData?.email || session.user?.email}
-            </p>
-            {userData?.createdAt && (
-              <p className="text-sm text-gray-500">
-                Member since {formatDate(userData.createdAt)}
+    <div className="min-h-screen pt-24 pb-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* ───────── profile ───────── */}
+        <section className="card-glass rounded-3xl p-8 mb-8 relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none rounded-3xl" />
+          <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-6">
+            <Avatar className="h-20 w-20 ring-2 ring-white/20 shadow-xl">
+              <AvatarImage
+                src={session.user?.image || ""}
+                alt={session.user?.name || "User"}
+              />
+              <AvatarFallback className="text-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+                {initials(session.user?.name || user?.name)}
+              </AvatarFallback>
+            </Avatar>
+            <div className="space-y-1">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+                {user?.name || session.user?.name}
+              </h2>
+              <p className="text-gray-400 text-lg break-all">
+                {user?.email || session.user?.email}
               </p>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Enhanced Stats Cards - Using server-provided data */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Links</p>
-              <p className="text-3xl font-bold text-blue-600">
-                {statsData?.totalLinks || 0}
-              </p>
-            </div>
-            <LinkIcon className="h-8 w-8 text-blue-600" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Total Clicks</p>
-              <p className="text-3xl font-bold text-green-600">
-                {statsData?.totalClicks || 0}
-              </p>
-            </div>
-            <Eye className="h-8 w-8 text-green-600" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Active Links</p>
-              <p className="text-3xl font-bold text-emerald-600">
-                {statusCounts.active}
-              </p>
-            </div>
-            <TrendingUp className="h-8 w-8 text-emerald-600" />
-          </div>
-        </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-gray-600">Expiring Soon</p>
-              <p className="text-3xl font-bold text-orange-600">
-                {statusCounts.expiring}
-              </p>
-            </div>
-            <Clock className="h-8 w-8 text-orange-600" />
-          </div>
-        </div>
-      </div>
-
-      {/* Enhanced Links Expiring Soon Alert - Using server data */}
-      {statusCounts.expiring > 0 && (
-        <div className="bg-gradient-to-r from-yellow-50 to-orange-50 border border-yellow-200 rounded-lg p-4 mb-8">
-          <div className="flex items-center">
-            <Timer className="h-5 w-5 text-orange-500 mr-2" />
-            <h3 className="text-orange-800 font-medium">
-              ⚠️ {statusCounts.expiring} link(s) expiring soon
-            </h3>
-          </div>
-          <p className="text-orange-700 text-sm mt-1">
-            Some of your links will expire within the next few days. Consider renewing them if they're still needed.
-          </p>
-        </div>
-      )}
-
-      {/* URLs Section - Using server-enhanced URLs */}
-      <div className="bg-white rounded-lg shadow-sm">
-        <div className="p-6 border-b border-gray-200">
-          <h3 className="text-lg font-semibold text-gray-900">Your URLs</h3>
-        </div>
-
-        {/* URLs List */}
-        <div className="divide-y divide-gray-200">
-          {urlsData.map((url) => (
-            <div
-              key={url.id}
-              className="p-6 hover:bg-gray-50 transition-colors">
-              <div className="flex items-center justify-between">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center space-x-3 mb-2">
-                    <p className="text-sm font-medium text-blue-600">
-                      {url.shortUrl || `${window.location.origin}/api/${url.shortCode}`}
-                    </p>
-                    <span className="flex items-center space-x-1 text-sm text-gray-500">
-                      <Eye className="h-4 w-4" />
-                      <span>{url.clicks || 0} clicks</span>
-                    </span>
-                    {getStatusBadge(url)}
-                  </div>
-                  <p
-                    className="text-sm text-gray-900 mb-1"
-                    title={url.originalUrl}>
-                    {formatUrl(url.originalUrl)}
-                  </p>
-                  <div className="flex items-center space-x-4 text-xs text-gray-500">
-                    <span className="flex items-center space-x-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Created {formatDate(url.createdAt)}</span>
-                    </span>
-                    {url.expiresAt && (
-                      <>
-                        <span>
-                          Expires {formatDate(url.expiresAt)}
-                        </span>
-                        {/* Using server-calculated time remaining */}
-                        {url.timeRemaining && (
-                          <span className="font-medium text-gray-700">
-                            ({url.timeRemaining})
-                          </span>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </div>
-                <div className="flex items-center space-x-2 ml-4">
-                  <button
-                    onClick={() => window.open(url.originalUrl, "_blank")}
-                    className="p-2 text-gray-500 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
-                    title="Visit original URL">
-                    <ExternalLink className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => handleCopyShortUrl(url.shortCode)}
-                    className="p-2 text-gray-500 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Copy short URL">
-                    <Copy className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-              {copiedId === url.shortCode && (
-                <div className="mt-2">
-                  <span className="text-xs text-green-600 bg-green-50 px-2 py-1 rounded">
-                    Copied to clipboard!
-                  </span>
-                </div>
+              {user?.createdAt && (
+                <p className="text-xs-gray">
+                  Member since {fmtDate(user.createdAt)}
+                </p>
               )}
             </div>
-          ))}
-        </div>
+          </div>
+        </section>
 
-        {urlsData.length === 0 && (
-          <div className="p-12 text-center">
-            <LinkIcon className="h-12 w-12 text-gray-400 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
-              No URLs yet
-            </h3>
-            <p className="text-gray-500">
-              You don't have any short URLs created yet.
+        <section className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6 mb-8">
+          {[
+            {
+              label: "Total Links",
+              value: stats?.totalLinks ?? 0,
+              color: "blue",
+              Icon: LinkIcon,
+            },
+            {
+              label: "Total Clicks",
+              value: stats?.totalClicks ?? 0,
+              color: "green",
+              Icon: Eye,
+            },
+            {
+              label: "Active Links",
+              value: statusCounts.active,
+              color: "emerald",
+              Icon: TrendingUp,
+            },
+            {
+              label: "Expiring Soon",
+              value: statusCounts.expiring,
+              color: "orange",
+              Icon: Clock,
+            },
+          ].map(({ label, value, color, Icon }) => (
+            <div
+              key={label}
+              className={`rounded-xl-glass p-6 shadow-2xl hover:bg-white/10 transition group relative overflow-hidden`}>
+              <div
+                className={`absolute inset-0 bg-${color}-500/5 pointer-events-none rounded-2xl`}
+              />
+              <div className="relative z-10 flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-gray-400">{label}</p>
+                  <p className={`text-3xl font-bold text-${color}-400`}>
+                    {value}
+                  </p>
+                </div>
+                <Icon
+                  className={`h-8 w-8 text-${color}-400 group-hover:scale-110 transition`}
+                />
+              </div>
+            </div>
+          ))}
+        </section>
+
+        {/* ───────── expiring alert ───────── */}
+        {statusCounts.expiring > 0 && (
+          <div className="rounded-xl-glass bg-gradient-to-r from-yellow-500/10 to-orange-500/10 p-6 mb-8 shadow-2xl">
+            <div className="flex items-center gap-3">
+              <Timer className="h-6 w-6 text-orange-400" />
+              <h3 className="text-orange-300 text-lg font-medium">
+                ⚠️ {statusCounts.expiring} link(s) expiring soon
+              </h3>
+            </div>
+            <p className="text-orange-400/80 text-sm mt-2">
+              Some links will expire shortly. Renew them if needed.
             </p>
           </div>
         )}
+
+        {/* ───────── urls list ───────── */}
+        <section className="card-glass rounded-3xl shadow-2xl overflow-hidden">
+          <header className="p-6 sm:p-8 border-b border-white/10">
+            <h3 className="text-2xl font-semibold bg-gradient-to-r from-white to-gray-300 bg-clip-text text-transparent">
+              Your URLs
+            </h3>
+          </header>
+
+          {/* list container with horizontal safety */}
+          <div className="divide-y divide-white/10 overflow-x-auto">
+            {urls.length === 0 && (
+              <div className="p-16 flex-center flex-col gap-6">
+                <LinkIcon className="h-16 w-16 text-gray-500" />
+                <h3 className="text-xl font-medium text-gray-300">
+                  No URLs yet
+                </h3>
+                <p className="text-gray-500">
+                  Create your first short URL to see it here.
+                </p>
+              </div>
+            )}
+
+            {urls.map((url: any) => (
+              <div
+                key={url.id}
+                className="p-6 sm:p-8 flex flex-col gap-4 sm:gap-0 sm:flex-row sm:items-start hover:bg-white/5 transition">
+                {/* left side */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex flex-wrap items-center gap-3 mb-2">
+                    <p className="text-sm font-medium text-blue-400 break-all">
+                      {url.shortUrl ||
+                        `${window.location.origin}/api/${url.shortCode}`}
+                    </p>
+                    <span className="flex items-center gap-1.5 text-xs-gray">
+                      <Eye className="h-4 w-4" />
+                      {url.clicks ?? 0} clicks
+                    </span>
+                    <Status url={url} />
+                  </div>
+
+                  <p
+                    className="text-sm text-gray-300 break-all mb-2"
+                    title={url.originalUrl}>
+                    {short(url.originalUrl)}
+                  </p>
+
+                  <div className="flex flex-wrap items-center gap-4 text-xs-gray">
+                    <span className="flex items-center gap-1.5">
+                      <Calendar className="h-3 w-3" />
+                      Created {fmtDate(url.createdAt)}
+                    </span>
+                    {url.expiresAt && (
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="h-3 w-3" />
+                        Expires {fmtDate(url.expiresAt)}
+                      </span>
+                    )}
+                    {url.timeRemaining && (
+                      <span className="font-medium text-gray-400">
+                        ({url.timeRemaining})
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex gap-4">
+                  <button
+                    onClick={() => window.open(url.originalUrl, "_blank")}
+                    className="p-3 rounded-xl-glass hover:bg-green-500/10 hover:text-green-400 hover:border-green-500/30 transition"
+                    title="Visit original URL">
+                    <ExternalLink className="h-5 w-5" />
+                  </button>
+                  <button
+                    onClick={() => copyUrl(url.shortCode)}
+                    className="p-3 rounded-xl-glass hover:bg-blue-500/10 hover:text-blue-400 hover:border-blue-500/30 transition"
+                    title="Copy short URL">
+                    <Copy className="h-5 w-5" />
+                  </button>
+                </div>
+
+                {copiedId === url.shortCode && (
+                  <span className="p-3 rounded-xl-glass ml-3">Copied !</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </section>
+
+        {/* ───────── most clicked ───────── */}
+        {stats?.mostClickedLink && (
+          <section className="card-glass rounded-3xl p-8 mt-8 shadow-2xl relative overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent pointer-events-none rounded-3xl" />
+            <div className="relative z-10 space-y-6">
+              <h3 className="text-xl font-semibold text-white">
+                🏆 Most Popular Link
+              </h3>
+              <div className="rounded-xl-glass p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="break-all">
+                  <p className="text-sm font-medium text-blue-400 mb-1">
+                    {`${window.location.origin}/api/${stats.mostClickedLink.shortCode}`}
+                  </p>
+                  <p className="text-sm text-gray-300">
+                    {short(stats.mostClickedLink.originalUrl)}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-3xl font-bold text-purple-400">
+                    {stats.mostClickedLink.clicks}
+                  </p>
+                  <p className="text-xs-gray">clicks</p>
+                </div>
+              </div>
+            </div>
+          </section>
+        )}
+
+        {/* ───────── additional stats ───────── */}
+        {stats && (
+          <section className="mt-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
+            {[
+              {
+                label: "Average Clicks",
+                value: stats.averageClicksPerLink,
+                color: "indigo",
+                suffix: "per link",
+              },
+              {
+                label: "Expired Links",
+                value: statusCounts.expired,
+                color: "red",
+                suffix: "total",
+              },
+              {
+                label: "Recent Links",
+                value: stats.recentLinks?.length || 0,
+                color: "cyan",
+                suffix: "last 5",
+              },
+            ].map(({ label, value, color, suffix }) => (
+              <div
+                key={label}
+                className="rounded-xl-glass p-6 shadow-2xl relative overflow-hidden">
+                <div
+                  className={`absolute inset-0 bg-${color}-500/5 pointer-events-none rounded-2xl`}
+                />
+                <div className="relative z-10 space-y-1">
+                  <h4 className="text-sm font-medium text-gray-400">{label}</h4>
+                  <p className={`text-2xl font-bold text-${color}-400`}>
+                    {value}
+                  </p>
+                  <p className="text-xs-gray">{suffix}</p>
+                </div>
+              </div>
+            ))}
+          </section>
+        )}
       </div>
-
-      {/* Most Clicked Link - Using server-provided data */}
-      {statsData?.mostClickedLink && (
-        <div className="mt-8 bg-white rounded-lg shadow-sm p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">
-            🏆 Most Popular Link
-          </h3>
-          <div className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-blue-600">
-                {`${window.location.origin}/api/${statsData.mostClickedLink.shortCode}`}
-              </p>
-              <p className="text-sm text-gray-900">
-                {formatUrl(statsData.mostClickedLink.originalUrl)}
-              </p>
-            </div>
-            <div className="text-right">
-              <p className="text-2xl font-bold text-purple-600">
-                {statsData.mostClickedLink.clicks}
-              </p>
-              <p className="text-xs text-gray-500">clicks</p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Additional Stats Section - Using server data */}
-      {statsData && (
-        <div className="mt-8 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h4 className="text-sm font-medium text-gray-600 mb-2">Average Clicks</h4>
-            <p className="text-2xl font-bold text-indigo-600">
-              {statsData.averageClicksPerLink}
-            </p>
-            <p className="text-xs text-gray-500">per link</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h4 className="text-sm font-medium text-gray-600 mb-2">Expired Links</h4>
-            <p className="text-2xl font-bold text-red-600">
-              {statusCounts.expired}
-            </p>
-            <p className="text-xs text-gray-500">total expired</p>
-          </div>
-
-          <div className="bg-white rounded-lg shadow-sm p-6">
-            <h4 className="text-sm font-medium text-gray-600 mb-2">Recent Links</h4>
-            <p className="text-2xl font-bold text-cyan-600">
-              {statsData.recentLinks?.length || 0}
-            </p>
-            <p className="text-xs text-gray-500">last 5 created</p>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
